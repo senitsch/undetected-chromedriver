@@ -13,25 +13,73 @@ import time
 from urllib.request import urlopen
 from urllib.request import urlretrieve
 import zipfile
+import subprocess
 
 
 logger = logging.getLogger(__name__)
 
 IS_POSIX = sys.platform.startswith(("darwin", "cygwin", "linux", "linux2"))
 
+class Chrome_Version():
 
-class Patcher(object):
-    url_repo = "https://chromedriver.storage.googleapis.com"
-    zip_name = "chromedriver_%s.zip"
-    exe_name = "chromedriver%s"
+    def get_chrome_major_version():
+        """
+        Detects the major version number of the installed chrome/chromium browser.
+        :return: The browsers major version number or None
+        """
+        browser_executables = ['google-chrome', 'chrome', 'chrome-browser', 'google-chrome-stable', 'chromium',
+                               'chromium-browser']
+        for browser_executable in browser_executables:
+            try:
+                version = subprocess.check_output([browser_executable, '--version'])
+                return int(re.match(r'.*?((?P<major>\d+)\.(\d+\.){2,3}\d+).*?', version.decode('utf-8')).group('major'))
+            except Exception:
+                pass
+
+    def get_chromedriver_version(version):
+        """Return needed Chromedriver Version"""
+        chrome2chromdriver = {106: "21.0.1", 104: "20.3.8", 102: "19.0.6", 101: "18.3.5", 98: "17.0.0-beta.4",
+                              97: "16.0.7", 96: "16.0.6", 95: "16.0.0-alpha.1", 94: "15.3.4", 93: "14.2.3",
+                              92: "14.0.0-beta.1", 91: "13.0.1", 82: "11.0.0-beta.7"}
+        nearest_version = min(chrome2chromdriver, key=lambda x: abs(x - version))
+
+        return chrome2chromdriver[nearest_version]
+
+# class Patcher(object):
+#     url_repo = "https://chromedriver.storage.googleapis.com"
+#     zip_name = "chromedriver_%s.zip"
+#     exe_name = "chromedriver%s"
+
+class Patcher(Chrome_Version, object):
+
+    arch = os.uname().machine
+    if arch == "aarch64":
+        arch = "arm64"
+
+    if arch == "x86_64":
+        url_repo = "https://chromedriver.storage.googleapis.com"
+        zip_name = "chromedriver_%s.zip"
+        exe_name = "chromedriver%s"
+    else:
+        url_repo = "https://github.com/electron/electron/releases/download/v%s/"
+        zip_name = "chromedriver-v%s-linux-%s.zip"
+        exe_name = "chromedriver%s"
+        chromedriver_version = Chrome_Version.get_chromedriver_version(Chrome_Version.get_chrome_major_version())
 
     platform = sys.platform
     if platform.endswith("win32"):
         zip_name %= "win32"
         exe_name %= ".exe"
     if platform.endswith(("linux", "linux2")):
-        zip_name %= "linux64"
-        exe_name %= ""
+        # zip_name %= "linux64"
+        # exe_name %= ""
+        if arch == "x86_64":
+            zip_name %= "linux64"
+            exe_name %= ""
+        else:
+            url_repo %= chromedriver_version
+            zip_name %= chromedriver_version, arch
+            exe_name %= ""
     if platform.endswith("darwin"):
         zip_name %= "mac64"
         exe_name %= ""
@@ -121,9 +169,15 @@ class Patcher(object):
         except FileNotFoundError:
             pass
 
-        release = self.fetch_release_number()
-        self.version_main = release.version[0]
-        self.version_full = release
+        # release = self.fetch_release_number()
+        # self.version_main = release.version[0]
+        # self.version_full = release
+        if "arm" in self.arch:
+            pass
+        else:
+            release = self.fetch_release_number()
+            self.version_main = release.version[0]
+            self.version_full = release
         self.unzip_package(self.fetch_package())
         return self.patch()
 
@@ -165,7 +219,6 @@ class Patcher(object):
     def unzip_package(self, fp):
         """
         Does what it says
-
         :return: path to unpacked executable
         """
         logger.debug("unzipping %s" % fp)
@@ -181,6 +234,7 @@ class Patcher(object):
         os.remove(fp)
         os.rmdir(self.zip_path)
         os.chmod(self.executable_path, 0o755)
+        print(self.executable_path)
         return self.executable_path
 
     @staticmethod
@@ -188,7 +242,6 @@ class Patcher(object):
         """
         kills running instances.
         :param: executable name to kill, may be a path as well
-
         :return: True on success else False
         """
         exe_name = os.path.basename(exe_name)
