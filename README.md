@@ -1,9 +1,9 @@
 # FORK INFO #
 This fork combines version 3.4.5 of undetected chromedriver
 https://github.com/ultrafunkamsterdam/undetected-chromedriver
-with ARM adjustments from
+with ARM support from
 https://github.com/ArevomEisvolk/undetected-chromedriver
-(which is still based on version 3.1v.3.
+(which was still based on v3.1.2 when creating this fork).
 
 My goal was to make the newest version of undetected chromedriver available for raspberry.
 If this repo helps for your purpose, you're welcome.
