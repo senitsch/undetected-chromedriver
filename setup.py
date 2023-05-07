@@ -51,7 +51,7 @@ setup(
     author="UltrafunkAmsterdam",
     author_email="info@blackhat-security.nl",
     description=description,
-    long_description=open(os.path.join(dirname, "README.md"), encoding="utf-8").read(),
+    # long_description=open(os.path.join(dirname, "README.md"), encoding="utf-8").read(),
     long_description_content_type="text/markdown",
     classifiers=[
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",

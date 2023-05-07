@@ -208,11 +208,16 @@ class Patcher(Chrome_Version, object):
     def fetch_package(self):
         """
         Downloads ChromeDriver from source
-
         :return: path to downloaded file
+        https://github.com/electron/electron/releases/download/v17.0.0/chromedriver-v17.0.0-linux-armv7l.zip
         """
-        u = "%s/%s/%s" % (self.url_repo, self.version_full.vstring, self.zip_name)
+        # u = "%s/%s/%s" % (self.url_repo, self.version_full.vstring, self.zip_name)
+        if "arm" in self.arch:
+            u = self.url_repo + self.zip_name
+        else:
+            u = "%s/%s/%s" % (self.url_repo, self.version_full.vstring, self.zip_name)
         logger.debug("downloading from %s" % u)
+        print(u)
         # return urlretrieve(u, filename=self.data_path)[0]
         return urlretrieve(u)[0]
 
