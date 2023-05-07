@@ -1,4 +1,6 @@
-# FORK INFO #
+# Undetected Chromedriver with ARM support #
+
+## Description ##
 This fork combines version 3.4.6 of undetected chromedriver
 https://github.com/ultrafunkamsterdam/undetected-chromedriver
 with ARM support from
@@ -10,7 +12,7 @@ If this repo helps for your purpose, you're welcome.
 Other than that, I will not offer support or promise to maintain this fork.
 For issues, usage examples, questions, and more info, please visit the above repos.
 
-# Installation
+## Installation ##
 
 ```
 pip install git+https://github.com/senitsch/undetected-chromedriver
