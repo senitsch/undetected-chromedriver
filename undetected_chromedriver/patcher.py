@@ -322,6 +322,12 @@ class Patcher(object):
 
         :return: path to downloaded file
         """
+        arch = os.uname().machine
+        if arch == "aarch64":
+            arch = "arm64"
+        if arch != "x86_64":
+            chromedriver_version = Chrome_Version.get_chromedriver_version(Chrome_Version.get_chrome_major_version())
+    
         if arch == "x86_64":
             zip_name = f"chromedriver_{self.platform_name}.zip"
         else:
