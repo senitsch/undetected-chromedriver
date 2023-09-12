@@ -18,13 +18,47 @@ from urllib.request import urlopen
 from urllib.request import urlretrieve
 import zipfile
 from multiprocessing import Lock
+import subprocess
 
 logger = logging.getLogger(__name__)
 
 IS_POSIX = sys.platform.startswith(("darwin", "cygwin", "linux", "linux2"))
 
+class Chrome_Version():
+    def get_chrome_major_version():
+        """
+        Detects the major version number of the installed chrome/chromium browser.
+        :return: The browsers major version number or None
+        """
+        browser_executables = ['google-chrome', 'chrome', 'chrome-browser', 'google-chrome-stable', 'chromium',
+                               'chromium-browser']
+        for browser_executable in browser_executables:
+            try:
+                version = subprocess.check_output([browser_executable, '--version'])
+                return int(re.match(r'.*?((?P<major>\d+)\.(\d+\.){2,3}\d+).*?', version.decode('utf-8')).group('major'))
+            except Exception:
+                pass
 
+    def get_chromedriver_version(version):
+        """Return needed Chromedriver Version"""
+        chrome2chromdriver = {114: "25.0.0-beta.2", 112: "24.2.0",
+                              111: "24.0.0-beta.2", 110: "23.3.1", 108: "22.3.8", 106: "21.4.4", 104: "20.3.12",
+                              102: "19.1.9", 100: "18.3.15", 98: "17.4.11", 96: "16.2.8",
+                              95: "16.0.0-alpha.1", 94: "15.5.7", 93: "14.2.9", 92: "14.0.0-beta.1", 91: "13.6.9",
+                              89: "12.2.3", 87: "11.5.0", 85: "10.4.7", 83: "9.4.4", 82: "9.0.0-beta.14"}
+        nearest_version = min(chrome2chromdriver, key=lambda x: abs(x - version))
+
+        return chrome2chromdriver[nearest_version]
+
+
+    
 class Patcher(object):
+    arch = os.uname().machine
+    if arch == "aarch64":
+        arch = "arm64"
+    if arch != "x86_64":
+        chromedriver_version = Chrome_Version.get_chromedriver_version(Chrome_Version.get_chrome_major_version())
+    
     lock = Lock()
     exe_name = "chromedriver%s"
 
@@ -92,11 +126,15 @@ class Patcher(object):
             self.executable_path = executable_path
 
         # Set the correct repository to download the Chromedriver from
-        if self.is_old_chromedriver:
-            self.url_repo = "https://chromedriver.storage.googleapis.com"
+        if arch == "x86_64":
+            if self.is_old_chromedriver:
+                self.url_repo = "https://chromedriver.storage.googleapis.com"
+            else:
+                self.url_repo = "https://googlechromelabs.github.io/chrome-for-testing"
         else:
-            self.url_repo = "https://googlechromelabs.github.io/chrome-for-testing"
-
+            self.url_repo = "https://github.com/electron/electron/releases/download/v%s/"
+            url_repo %= chromedriver_version
+        
         self.version_main = version_main
         self.version_full = None
 
@@ -172,9 +210,12 @@ class Patcher(object):
         except FileNotFoundError:
             pass
 
-        release = self.fetch_release_number()
-        self.version_main = release.version[0]
-        self.version_full = release
+        if "arm" in self.arch:
+            pass
+        else:
+            release = self.fetch_release_number()
+            self.version_main = release.version[0]
+            self.version_full = release
         self.unzip_package(self.fetch_package())
         return self.patch()
 
@@ -275,15 +316,23 @@ class Patcher(object):
 
         :return: path to downloaded file
         """
-        zip_name = f"chromedriver_{self.platform_name}.zip"
-        if self.is_old_chromedriver:
-            download_url = "%s/%s/%s" % (self.url_repo, self.version_full.vstring, zip_name)
+        if arch == "x86_64":
+            zip_name = f"chromedriver_{self.platform_name}.zip"
         else:
-            zip_name = zip_name.replace("_", "-", 1)
-            download_url = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/%s/%s/%s"
-            download_url %= (self.version_full.vstring, self.platform_name, zip_name)
+            zip_name = f"chromedriver-v{chromedriver_version}-linux-{arch}.zip"
+
+        if "arm" in self.arch:
+            download_url = self.url_repo + self.zip_name
+        else:
+            if self.is_old_chromedriver:
+                download_url = "%s/%s/%s" % (self.url_repo, self.version_full.vstring, zip_name)
+            else:
+                zip_name = zip_name.replace("_", "-", 1)
+                download_url = "https://edgedl.me.gvt1.com/edgedl/chrome/chrome-for-testing/%s/%s/%s"
+                download_url %= (self.version_full.vstring, self.platform_name, zip_name)
 
         logger.debug("downloading from %s" % download_url)
+        print(download_url)
         return urlretrieve(download_url)[0]
 
     def unzip_package(self, fp):
@@ -311,6 +360,7 @@ class Patcher(object):
         os.remove(fp)
         shutil.rmtree(self.zip_path)
         os.chmod(self.executable_path, 0o755)
+        print(self.executable_path)
         return self.executable_path
 
     @staticmethod
