@@ -53,12 +53,6 @@ class Chrome_Version():
 
     
 class Patcher(object):
-    arch = os.uname().machine
-    if arch == "aarch64":
-        arch = "arm64"
-    if arch != "x86_64":
-        chromedriver_version = Chrome_Version.get_chromedriver_version(Chrome_Version.get_chrome_major_version())
-    
     lock = Lock()
     exe_name = "chromedriver%s"
 
@@ -91,6 +85,12 @@ class Patcher(object):
             version_main: 0 = auto
                 specify main chrome version (rounded, ex: 82)
         """
+        arch = os.uname().machine
+        if arch == "aarch64":
+            arch = "arm64"
+        if arch != "x86_64":
+            chromedriver_version = Chrome_Version.get_chromedriver_version(Chrome_Version.get_chrome_major_version())
+    
         self.force = force
         self._custom_exe_path = False
         prefix = "undetected"
